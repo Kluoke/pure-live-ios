@@ -7,7 +7,7 @@ struct ChatOverlay: View {
             ForEach(messages.suffix(8)) { item in
                 HStack {
                     Text(item.userName).font(.caption.bold())
-                    Text(item.text).font(.caption)
+                    Text(item.message).font(.caption)
                 }
                 .padding(6)
                 .background(.black.opacity(0.35), in: Capsule())
