@@ -14,7 +14,7 @@ targets:
       - path: PureLive
     settings:
       base:
-        INFOPLIST_FILE: PureLive/Config/Info.plist
+        INFOPLIST_FILE: PureLive/Config/AppInfo.plist
         PRODUCT_NAME: Pure Live
     scheme:
       testTargets:
