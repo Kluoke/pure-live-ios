@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import Foundation
 
 @MainActor
@@ -11,25 +12,10 @@ final class PlayerManager: ObservableObject {
         error = nil
         let item = AVPlayerItem(url: stream.url)
         player = AVPlayer(playerItem: item)
-        if autoplay {
-            player?.play()
-            isPlaying = true
-        }
+        if autoplay { player?.play(); isPlaying = true }
     }
 
-    func play() {
-        player?.play()
-        isPlaying = true
-    }
-
-    func pause() {
-        player?.pause()
-        isPlaying = false
-    }
-
-    func stop() {
-        player?.pause()
-        player = nil
-        isPlaying = false
-    }
+    func play() { player?.play(); isPlaying = true }
+    func pause() { player?.pause(); isPlaying = false }
+    func stop() { player?.pause(); player = nil; isPlaying = false }
 }
