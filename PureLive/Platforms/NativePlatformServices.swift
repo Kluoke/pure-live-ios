@@ -17,13 +17,10 @@ private enum WebExtraction {
         for m in regex.matches(in:html,range:NSRange(location:0,length:ns.length)) { let raw=clean(ns.substring(with:m.range)); guard raw.contains(".m3u8") || raw.contains(".flv") else{continue}; if let u=URL(string:raw),!result.contains(u){result.append(u)} }
         return result
     }
-    static func links(_ html:String, pattern:String)->[String] {
-        guard let regex=try? NSRegularExpression(pattern:pattern) else{return[]}; let ns=html as NSString
-        return regex.matches(in:html,range:NSRange(location:0,length:ns.length)).compactMap{ $0.numberOfRanges>1 ? clean(ns.substring(with:$0.range(at:1))) : nil }
-    }
+    static func links(_ html:String, pattern:String)->[String] { guard let regex=try? NSRegularExpression(pattern:pattern) else{return[]};let ns=html as NSString;return regex.matches(in:html,range:NSRange(location:0,length:ns.length)).compactMap{$0.numberOfRanges>1 ? clean(ns.substring(with:$0.range(at:1))) : nil} }
 }
 
-private class JSONPlatformService: LivePlatformService, @unchecked Sendable {
+class JSONPlatformService: LivePlatformService, @unchecked Sendable {
     let platform:LivePlatform
     init(_ platform:LivePlatform){self.platform=platform}
     func search(keyword:String) async throws->[LiveRoom]{[]}
@@ -31,13 +28,13 @@ private class JSONPlatformService: LivePlatformService, @unchecked Sendable {
     func streams(for room:LiveRoom) async throws->[LiveStream]{[]}
     func messages(for room:LiveRoom)->AsyncThrowingStream<LiveMessage,Error>{AsyncThrowingStream{$0.finish()}}
     func get(_ url:URL,headers:[String:String]=[:]) async throws->Any { try await APIClient.shared.json(from:url,headers:headers) }
-    func post(_ url:URL,body:[String:Any],headers:[String:String]=[:]) async throws->Any { var r=URLRequest(url:url); r.httpMethod="POST"; r.setValue("application/json",forHTTPHeaderField:"Content-Type"); headers.forEach{r.setValue($0.value,forHTTPHeaderField:$0.key)}; r.httpBody=try JSONSerialization.data(withJSONObject:body); let(d,res)=try await URLSession.shared.data(for:r); guard let h=res as? HTTPURLResponse,(200..<300).contains(h.statusCode) else{throw PlatformServiceError.invalidData}; return try JSONSerialization.jsonObject(with:d) }
+    func post(_ url:URL,body:[String:Any],headers:[String:String]=[:]) async throws->Any { var r=URLRequest(url:url);r.httpMethod="POST";r.setValue("application/json",forHTTPHeaderField:"Content-Type");headers.forEach{r.setValue($0.value,forHTTPHeaderField:$0.key)};r.httpBody=try JSONSerialization.data(withJSONObject:body);let(d,res)=try await URLSession.shared.data(for:r);guard let h=res as? HTTPURLResponse,(200..<300).contains(h.statusCode) else{throw PlatformServiceError.invalidData};return try JSONSerialization.jsonObject(with:d) }
     func room(_ id:String,title:String,nick:String,cover:String="",link:String="",watching:String="0")->LiveRoom { LiveRoom(roomId:id,link:link.isEmpty ? nil:URL(string:link),title:title,nick:nick,cover:URL(string:cover),watching:watching,platform:platform,status:true,liveStatus:"live") }
 }
 
 final class BilibiliService: JSONPlatformService {
     init(){super.init(.bilibili)}
-    override func search(keyword:String) async throws->[LiveRoom]{ guard let u=HTTP.url("https://api.bilibili.com/x/web-interface/search/type",["search_type":"live","keyword":keyword,"page":"1"])else{throw PlatformServiceError.invalidData};let r=HTTP.dict(try await get(u,headers:["User-Agent":HTTP.ua,"Referer":"https://live.bilibili.com/"]));return (HTTP.dict(r["data"])["result"] as? [[String:Any]] ?? []).compactMap{x in let id=HTTP.string(x["roomid"]);guard !id.isEmpty else{return nil};return room(id,title:HTTP.string(x["title"]).replacingOccurrences(of:"<[^>]+>",with:"",options:.regularExpression),nick:HTTP.string(x["uname"]),cover:HTTP.string(x["cover"]),link:"https://live.bilibili.com/\(id)",watching:HTTP.string(x["online"]))} }
+    override func search(keyword:String) async throws->[LiveRoom]{guard let u=HTTP.url("https://api.bilibili.com/x/web-interface/search/type",["search_type":"live","keyword":keyword,"page":"1"])else{throw PlatformServiceError.invalidData};let r=HTTP.dict(try await get(u,headers:["User-Agent":HTTP.ua,"Referer":"https://live.bilibili.com/"]));return(HTTP.dict(r["data"])["result"] as? [[String:Any]] ?? []).compactMap{x in let id=HTTP.string(x["roomid"]);guard !id.isEmpty else{return nil};return room(id,title:HTTP.string(x["title"]).replacingOccurrences(of:"<[^>]+>",with:"",options:.regularExpression),nick:HTTP.string(x["uname"]),cover:HTTP.string(x["cover"]),link:"https://live.bilibili.com/\(id)",watching:HTTP.string(x["online"]))}}
     override func categories() async throws->[LiveCategory]{guard let u=HTTP.url("https://api.live.bilibili.com/room/v1/Area/getList",["need_entrance":"1","parent_id":"0"])else{throw PlatformServiceError.invalidData};let r=HTTP.dict(try await get(u,headers:["User-Agent":HTTP.ua,"Referer":"https://live.bilibili.com/"]));return(r["data"] as? [[String:Any]] ?? []).map{x in LiveCategory(id:HTTP.string(x["id"]),name:HTTP.string(x["name"]),children:(x["list"] as? [[String:Any]] ?? []).map{LiveCategory(id:HTTP.string($0["id"]),name:HTTP.string($0["name"]),children:[])})}}
     override func streams(for room:LiveRoom) async throws->[LiveStream]{guard let id=room.roomId,let u=HTTP.url("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo",["room_id":id,"protocol":"0,1","format":"0,1,2","codec":"0","platform":"html5","dolby":"5"])else{throw PlatformServiceError.invalidData};let r=HTTP.dict(try await get(u,headers:["User-Agent":HTTP.ua,"Referer":"https://live.bilibili.com/\(id)"]));let p=HTTP.dict(HTTP.dict(HTTP.dict(r["data"])["playurl_info"])["playurl"]);var out:[LiveStream]=[];for s in p["stream"] as? [[String:Any]] ?? [] {for f in s["format"] as? [[String:Any]] ?? [] {for c in f["codec"] as? [[String:Any]] ?? [] {let base=HTTP.string(c["base_url"]);for i in c["url_info"] as? [[String:Any]] ?? [] {if let u=URL(string:HTTP.string(i["host"])+base+HTTP.string(i["extra"])){out.append(LiveStream(url:u,quality:"HLS",headers:["Referer":"https://live.bilibili.com/\(id)","User-Agent":HTTP.ua]))}}}}};return out}
 }
