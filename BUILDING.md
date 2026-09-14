@@ -20,57 +20,41 @@ open PureLive.xcodeproj
 
 ## Build from the command line
 
-List available simulators first:
-
 ```bash
 xcrun simctl list devices available
+xcodebuild -project PureLive.xcodeproj -scheme PureLive -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' build
 ```
 
-Then use one of the installed device names:
-
-```bash
-xcodebuild -project PureLive.xcodeproj \
-  -scheme PureLive \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
-  build
-```
-
-If your installed simulator has a different name, replace `iPhone 17` with that name.
+Replace the simulator name when necessary.
 
 ## Run unit tests
 
 ```bash
-xcodebuild test \
-  -project PureLive.xcodeproj \
-  -scheme PureLive \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'
+xcodebuild test -project PureLive.xcodeproj -scheme PureLive -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'
 ```
 
-The test target currently covers basic model/platform wiring and the M3U8 fallback parser.
-
-## Run in Xcode
-
-1. Open `PureLive.xcodeproj`.
-2. Select the `PureLive` scheme.
-3. Select an iOS Simulator or a connected iPhone.
-4. `Cmd+B` builds the app.
-5. `Cmd+U` runs the unit tests.
-6. `Cmd+R` launches the app.
+The test target covers platform wiring and the M3U8 fallback parser.
 
 ## Functional smoke test
 
 1. Open the **直播** tab.
-2. Select a platform.
-3. Search for a known live room or streamer.
-4. Open a result.
-5. Confirm that the stream list appears and that AVPlayer starts playback.
-6. Switch quality when multiple stream URLs are returned.
-7. Open **设置** and verify quality/danmaku preferences persist after relaunch.
+2. Select a platform and search for a known live room.
+3. Open a result and verify that stream URLs are returned.
+4. Confirm AVPlayer starts playback and that provider HTTP headers are honored.
+5. Switch quality when multiple URLs are available.
+6. For Kuaishou, Douyin and NetEase CC, verify that the native web session can load the live page and obtain the current page-generated stream URL.
+7. Open **设置** and verify preferences persist after relaunch.
 
-## Current platform boundary
+## Dynamic web providers
 
-Bilibili, Douyu and Huya have native HTTP metadata/stream adapters in this repository. Kuaishou, Douyin and NetEase CC are wired into the same native adapter architecture but currently report an explicit unsupported/dynamic-signing error instead of pretending that an empty result is a successful implementation. Their upstream protocols require additional dynamic signing/session work before they can be considered production-ready.
+Kuaishou, Douyin and NetEase CC do not rely on a copied, hard-coded signing algorithm. `PlatformWebSession` uses an iOS `WKWebView` with a persistent website data store so the provider's current JavaScript can establish cookies, tokens and other page/session state. The adapter then parses the live page's current stream descriptors and falls back to the provider's public JSON/GraphQL endpoint where available.
 
-Danmaku transport is similarly separated from the generic UI model; platform-specific WebSocket/protocol implementations are not claimed as complete until they can be exercised against live rooms.
+This is intentional: these providers change their web signatures and session fields frequently. Keeping the signing/session execution in the provider's own web runtime avoids shipping a stale signature implementation. The app still uses native Swift models, networking, AVPlayer and SwiftUI; WKWebView is only the compatibility boundary for dynamic provider web protocols.
+
+## Platform coverage
+
+Native adapters are now present for Bilibili, Douyu, Huya, Kuaishou, Douyin and NetEase CC. Kuaishou uses its GraphQL `LiveDetail` fallback; Douyin and CC use their current live-page session; all three share the same `LiveRoom`/`LiveStream` abstraction.
+
+Platform-specific danmaku transports are still a separate layer and are not required for stream playback. The generic danmaku model/UI is already present and provider-specific WebSocket/protobuf implementations can be added without changing the player architecture.
 
 The project intentionally does **not** expose the upstream custom IPTV/M3U8-source feature as a product feature. Internal HLS/M3U8 parsing remains because platform live streams commonly use HLS.
