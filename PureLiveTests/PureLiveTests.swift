@@ -11,7 +11,7 @@ final class PureLiveTests: XCTestCase {
 
     func testM3U8ParserFallback() {
         let url = URL(string: "https://example.com/live/index.m3u8")!
-        let streams = M3U8Parser.parse("#EXTM3U\n#EXT-X-TARGETDURATION:6\n", baseURL: url)
+        let streams = M3U8Parser().resolveURL(url, contents: "#EXTM3U\n#EXT-X-TARGETDURATION:6\n")
         XCTAssertEqual(streams.count, 1)
         XCTAssertEqual(streams.first?.url, url)
     }
