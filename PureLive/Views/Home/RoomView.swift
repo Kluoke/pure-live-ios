@@ -6,14 +6,13 @@ struct RoomView: View {
     @State private var selectedStream: LiveStream?
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var player = PlayerManager()
     @AppStorage("danmakuEnabled") private var danmakuEnabled = true
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if let selectedStream {
-                    PlayerView(player: player, stream: selectedStream)
+                    PlayerView(stream: selectedStream)
                         .aspectRatio(16 / 9, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {
@@ -35,7 +34,6 @@ struct RoomView: View {
         .navigationTitle("直播间")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
-        .onDisappear { player.stop() }
     }
 
     private func load() async {
