@@ -17,31 +17,40 @@ Native iOS rewrite of [Pure Live](https://github.com/DuckHK/pure_live), implemen
 
 - Swift 6 / SwiftUI
 - AVFoundation / AVKit
-- URLSession
-- URLSessionWebSocketTask
+- WebKit for dynamic provider web sessions
+- URLSession / URLSessionWebSocketTask
 - Observation / AppStorage
 - XcodeGen project definition
 
 ## Architecture
 
-`SwiftUI Views -> ViewModels -> Platform Services -> URLSession -> AVPlayer`
+`SwiftUI Views -> ViewModels -> Platform Services -> Web/HTTP session -> LiveStream -> AVPlayer`
 
-Each provider implements the same `LivePlatformService` interface. Provider-specific HTTP parameters, response parsing and playback URL construction stay isolated from the UI.
+Each provider implements the same `LivePlatformService` interface. Provider-specific HTTP parameters, response parsing, session bootstrap and playback URL construction stay isolated from the UI.
 
-## Current native features
+## Native features
 
 - Native SwiftUI application shell
 - Platform selector
 - Live-room search flow
-- Room detail and native HLS/stream playback flow
+- Room detail and native HLS/stream playback
+- Provider playback headers applied to AVPlayer
 - Bilibili category/search/play URL adapter
 - Douyu category/search/play URL adapter
 - Huya search/category/play URL adapter
-- Kuaishou / Douyin / NetEase CC adapter placeholders for provider endpoints that require additional current signing/protocol work
+- Kuaishou GraphQL + web-session playback adapter
+- Douyin live-page web-session playback adapter
+- NetEase CC live-page web-session playback adapter
 - M3U8 master-playlist parsing
-- Danmaku transport abstraction
+- Danmaku transport abstraction and UI model
 - Settings screen
 - Unit-test target
+
+### Dynamic provider sessions
+
+Kuaishou, Douyin and NetEase CC use `WKWebView` as a compatibility boundary for provider-controlled JavaScript/session state. This lets the current web page establish cookies, tokens and page-generated playback descriptors instead of shipping a stale copied signing algorithm. Public JSON/GraphQL fallbacks are used where available.
+
+The rest of the application remains native Swift; the web session is isolated inside the platform adapters.
 
 ## Building
 
@@ -51,6 +60,8 @@ The repository contains `PureLive/Config/Project.yml` for XcodeGen. On macOS wit
 xcodegen generate --spec PureLive/Config/Project.yml
 open PureLive.xcodeproj
 ```
+
+See `BUILDING.md` for simulator tests and the functional smoke-test checklist.
 
 ## License
 
