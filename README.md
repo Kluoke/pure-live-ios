@@ -2,11 +2,7 @@
 
 Native iOS rewrite of [Pure Live](https://github.com/DuckHK/pure_live), implemented with Swift and SwiftUI.
 
-## Goal
-
-Rebuild the Pure Live experience as a first-class native iOS application instead of porting the Flutter UI/runtime.
-
-Planned platforms:
+## Supported providers
 
 - Bilibili
 - Douyu
@@ -14,22 +10,48 @@ Planned platforms:
 - Kuaishou
 - Douyin
 - NetEase CC
-- Custom M3U8 / IPTV
+
+> Custom M3U8 / IPTV is intentionally not part of this native rewrite.
 
 ## Native stack
 
-- Swift / SwiftUI
+- Swift 6 / SwiftUI
 - AVFoundation / AVKit
 - URLSession
 - URLSessionWebSocketTask
-- SwiftData
+- Observation / AppStorage
+- XcodeGen project definition
 
 ## Architecture
 
-`Views -> ViewModels -> Platform Services -> Network/Parser -> Player`
+`SwiftUI Views -> ViewModels -> Platform Services -> URLSession -> AVPlayer`
 
-Platform adapters expose a common native interface so individual live-stream providers can be migrated independently.
+Each provider implements the same `LivePlatformService` interface. Provider-specific HTTP parameters, response parsing and playback URL construction stay isolated from the UI.
+
+## Current native features
+
+- Native SwiftUI application shell
+- Platform selector
+- Live-room search flow
+- Room detail and native HLS/stream playback flow
+- Bilibili category/search/play URL adapter
+- Douyu category/search/play URL adapter
+- Huya search/category/play URL adapter
+- Kuaishou / Douyin / NetEase CC adapter placeholders for provider endpoints that require additional current signing/protocol work
+- M3U8 master-playlist parsing
+- Danmaku transport abstraction
+- Settings screen
+- Unit-test target
+
+## Building
+
+The repository contains `PureLive/Config/Project.yml` for XcodeGen. On macOS with XcodeGen installed:
+
+```bash
+xcodegen generate --spec PureLive/Config/Project.yml
+open PureLive.xcodeproj
+```
 
 ## License
 
-This project is derived from the architecture and functionality of the GPL-3.0 licensed Pure Live project. See `LICENSE` for the applicable license text and `NOTICE` for attribution.
+This project is derived from the GPL-3.0 licensed Pure Live project. See `LICENSE` and `NOTICE.md` for licensing and attribution.
