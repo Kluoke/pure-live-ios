@@ -10,7 +10,13 @@ final class PlayerManager: ObservableObject {
 
     func load(_ stream: LiveStream, autoplay: Bool = true) {
         error = nil
-        let item = AVPlayerItem(url: stream.url)
+        let asset: AVURLAsset
+        if stream.headers.isEmpty {
+            asset = AVURLAsset(url: stream.url)
+        } else {
+            asset = AVURLAsset(url: stream.url, options: [AVURLAssetHTTPHeaderFieldsKey: stream.headers])
+        }
+        let item = AVPlayerItem(asset: asset)
         player = AVPlayer(playerItem: item)
         if autoplay { player?.play(); isPlaying = true }
     }
